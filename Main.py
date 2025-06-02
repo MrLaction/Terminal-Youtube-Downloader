@@ -105,7 +105,7 @@ def download_with_yt_dlp(url, selected_format, title):
     }
 
     with YoutubeDL(ydl_opts) as ydl:
-        print("\n⬇️  Starting download and possible merging...")
+        print("\nStarting download and possible merging...")
         ydl.download([url])
         print(f"\nProcess completed. Check '{output_dir}' for the finished file.")
 
