@@ -7,54 +7,54 @@ def intro():
     try:
         with open("ASCII.txt", "r", encoding="utf-8") as f:
             print(f.read())
-        print("\nBienvenido al The Pepe's Pirate Ship YouTube ➜ MP4 (Audio + Video)\n")
+        print("\nWelcome to The Pepe's Pirate Ship YouTube ➜ MP4 (Audio + Video)\n")
     except FileNotFoundError:
-        print("No se encontró el archivo ASCII.txt")
+        print("ASCII.txt file not found")
 
 
-# 1) Validador
-def validar_url(url):
-    patron = r'^(https?\:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$'
-    return bool(re.match(patron, url))
+# 1) URL Validator
+def validate_url(url):
+    pattern = r'^(https?\:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$'
+    return bool(re.match(pattern, url))
 
 
-# 2) Extrae la información (sin descargar) y devuelve la lista de formatos
-def obtener_formats(url):
+# 2) Extract info (without downloading) and return list of formats
+def get_formats(url):
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
-        # no descarga aquí, solo extrae info
+        # no download here, just extract info
     }
     with YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
         return info.get('formats', []), info.get('title', 'video')
 
 
-# 3) Muestra las calidades disponibles (solo video y video+audio mp4/webm) y devuelve un dict mapping opción→format_id
-def mostrar_calidades(formatos):
-    print("\nFormatos disponibles (solo video / video+audio):")
-    opciones = {}
+# 3) Show available qualities (only video and video+audio mp4/webm) and return a dict mapping option→format_id
+def show_qualities(formats):
+    print("\nAvailable formats (video only / video+audio):")
+    options = {}
     index = 1
 
-    # Filtra:
-    # - formatos con video (vcodec != 'none')
-    # - ext sea mp4 o webm (puedes agregar otros si quieres)
-    filtrados = [f for f in formatos if f.get('vcodec') != 'none' and f.get('ext') in ('mp4','webm')]
-    # Ordena por resolución descendente (si existe), luego por fps
-    filtrados.sort(key=lambda x: (
+    # Filter:
+    # - formats with video (vcodec != 'none')
+    # - ext is mp4 or webm (you can add others if you want)
+    filtered = [f for f in formats if f.get('vcodec') != 'none' and f.get('ext') in ('mp4', 'webm')]
+    # Sort by descending resolution (if available), then fps
+    filtered.sort(key=lambda x: (
         int(x.get('height') or 0),
         int(x.get('fps') or 0)
     ), reverse=True)
 
     seen = set()
-    for fmt in filtrados:
-        # Evita duplicar la misma resolución+fps+ext
-        key_repr = f"{fmt.get('height')}x{fmt.get('fps')} {fmt.get('ext')} {fmt.get('acodec')!='none'}"
+    for fmt in filtered:
+        # Avoid duplicate resolution+fps+ext
+        key_repr = f"{fmt.get('height')}x{fmt.get('fps')} {fmt.get('ext')} {fmt.get('acodec') != 'none'}"
         if key_repr in seen:
             continue
         seen.add(key_repr)
 
-        # Mostrar datos útiles:
+        # Show useful info:
         res = fmt.get('resolution') or f"{fmt.get('width')}x{fmt.get('height')}"
         fps = fmt.get('fps') or '-'
         ext = fmt.get('ext')
@@ -66,80 +66,77 @@ def mostrar_calidades(formatos):
         size_str = f"{size_mb} MB" if size_mb else "—"
 
         tag = fmt.get('format_id')
-        opciones[str(index)] = fmt
-        print(f"{index}. [{tag}] {res} | fps: {fps} | ext: {ext} | {'con audio' if has_audio else 'solo video'} | {size_str}")
+        options[str(index)] = fmt
+        print(f"{index}. [{tag}] {res} | fps: {fps} | ext: {ext} | {'with audio' if has_audio else 'video only'} | {size_str}")
         index += 1
 
-    if not opciones:
-        print("   (No se encontraron formatos de video/mp4 o video/webm.)")
-    return opciones
+    if not options:
+        print("   (No mp4 or webm video formats found.)")
+    return options
 
 
-# 4) Función que descarga el formato seleccionado (y lo combina con audio si hace falta)
-def descargar_con_yt_dlp(url, formato_seleccionado, title):
-    # Si el formato contiene audio (acodec != 'none'), basta con ese format_id.
-    fmt_id = formato_seleccionado.get('format_id')
-    has_audio = formato_seleccionado.get('acodec') != 'none'
+# 4) Function to download selected format (and merge with audio if needed)
+def download_with_yt_dlp(url, selected_format, title):
+    # If format contains audio (acodec != 'none'), just that format_id is enough.
+    fmt_id = selected_format.get('format_id')
+    has_audio = selected_format.get('acodec') != 'none'
 
     if has_audio:
         format_str = f"{fmt_id}"
     else:
-        # Si es video-only, pide el mejor audio disponible en mp4 para luego combinar.
+        # If video-only, request best available audio in mp4 to merge later.
         format_str = f"{fmt_id}+bestaudio[ext=m4a]/best[ext=m4a]/bestaudio"
 
-    # Carpeta de salida = directorio actual
+    # Output folder = current directory
     output_dir = os.getcwd()
-    # Limpieza del nombre para evitar caracteres raros
+    # Clean title to avoid weird characters
     base = title.replace(" ", "_").replace("/", "_")
     out_template = os.path.join(output_dir, f"{base}.%(ext)s")
 
-
-    #Opciones de Config
+    # Config options
     ydl_opts = {
         'format': format_str,
-        'merge_output_format': 'mp4',        # obliga a mp4 final
-        'outtmpl': out_template,             # guarda en cwd con nombre limpio
-        'quiet': False,                      # muestra progreso
+        'merge_output_format': 'mp4',    # force mp4 output
+        'outtmpl': out_template,         # save in cwd with clean name
+        'quiet': False,                  # show progress
         'noprogress': False,
         'no_warnings': True,
-        'retries': 3,                        # reintentar 3 veces si falla
+        'retries': 3,                   # retry 3 times on failure
     }
 
     with YoutubeDL(ydl_opts) as ydl:
-        print("\n⬇️  Iniciando descarga y posible combinación...")
+        print("\n⬇️  Starting download and possible merging...")
         ydl.download([url])
-        print(f"\nProceso completado. Revisa '{output_dir}' para el archivo terminado.")
+        print(f"\nProcess completed. Check '{output_dir}' for the finished file.")
 
 
 if __name__ == "__main__":
     intro()
 
-    # Repetir hasta que se ingrese un link válido o se escriba 'Exit'
+    # Repeat until a valid link is entered or 'Exit' is typed
     while True:
-        url = input("Ingrese un link válido de YouTube (o escriba 'Exit' para salir): ").strip()
+        url = input("Enter a valid YouTube link (or type 'Exit' to quit): ").strip()
         if url.lower() == "exit":
-            print("Gracias por usarnoss :).")
+            print("Thanks for using us :).")
             sys.exit(0)
-        if validar_url(url):
+        if validate_url(url):
             break
-        print("URL inválida. Inténtalo de nuevo o escribe 'Exit' para salir.\n")
+        print("Invalid URL. Try again or type 'Exit' to quit.\n")
 
-    # 2) Obtener los formatos sin descargar (y título para nombrar el archivo)
-    formatos, titulo = obtener_formats(url)
+    # 2) Get formats without downloading (and title to name the file)
+    formats, title = get_formats(url)
 
-    # 3) Mostrar menú de calidades
-    opciones = mostrar_calidades(formatos)
-    if not opciones:
-        print("No hay formatos de video disponibles para este enlace.")
+    # 3) Show quality menu
+    options = show_qualities(formats)
+    if not options:
+        print("No video formats available for this link.")
         sys.exit(1)
 
-    seleccion = input("\nElige la opción deseada (número): ").strip()
-    elegido = opciones.get(seleccion)
-    if not elegido:
-        print("Opción no válida. Saliendo.")
+    choice = input("\nChoose the desired option (number): ").strip()
+    selected = options.get(choice)
+    if not selected:
+        print("Invalid option. Exiting.")
         sys.exit(1)
 
-    # 4) Descargar
-    descargar_con_yt_dlp(url, elegido, titulo)
-
-
+    # 4) Download
+    download_with_yt_dlp(url, selected, title)
