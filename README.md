@@ -1,4 +1,3 @@
-
 # The Pepe's Pirate Ship: YouTube ➜ MP4 (Audio + Video)
 
 This program allows you to download YouTube videos in MP4 format, selecting from available quality options, and automatically merging audio and video when needed. It uses the `yt-dlp` library and requires `ffmpeg` to be installed on your system.
@@ -99,9 +98,9 @@ This program allows you to download YouTube videos in MP4 format, selecting from
 - If `ASCII.txt` is missing, the program will still work but the visual intro will not be shown.
 - You can exit the program by typing `Exit` when prompted for a URL.
 - An internet connection is required.
+- **Occasionally a video format may not appear in the list on the first attempt** (for example, due to temporary YouTube CDN or network hiccups). If you don’t see the expected formats, simply restart the program and try the same URL again. In most cases, the missing format will reappear on a second attempt.
 
 ---
 
 ## By: The Pepe's Pirate Ship Crew  
 Contributions are welcome.
-
